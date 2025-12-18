@@ -1,9 +1,3 @@
-Here is the complete, professional **README.md** file for your project. It includes all the features we built (Whale Tracker, AutoML, MLOps), setup instructions, and deployment guides.
-
-**Copy and paste the code block below into your `README.md` file.**
-
----
-
 ```markdown
 # 🛡️ CryptoGuard: MLOps Financial Intelligence System
 
