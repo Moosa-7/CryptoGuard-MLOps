@@ -1,15 +1,14 @@
 #!/bin/bash
 
-# 1. Start FastAPI (Backend) in the background
-# We run it on localhost:8000 so the internal dashboard can find it.
+# 1. Start FastAPI (Backend)
+# Use 0.0.0.0 to ensure it listens on all internal interfaces
 echo "🚀 Starting FastAPI Backend..."
-uvicorn src.api.main:app --host 127.0.0.1 --port 8000 &
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
 
-# 2. Wait a few seconds for the Brain to wake up
-sleep 5
+# 2. Wait LONGER for the Brain to load heavy models
+echo "⏳ Waiting 10 seconds for models to load..."
+sleep 10
 
-# 3. Start Streamlit (Frontend)
-# Railway automatically assigns a port number to the $PORT variable.
-# We MUST tell Streamlit to listen on that specific port.
+# 3. Start Streamlit
 echo "🎨 Starting Streamlit Frontend on port $PORT..."
 streamlit run src/ui/dashboard.py --server.port $PORT --server.address 0.0.0.0
