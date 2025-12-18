@@ -2,10 +2,10 @@
 FROM python:3.12-slim
 
 # Install system tools (needed for building some ML libraries)
+# REMOVED: software-properties-common (caused the build error)
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
-    software-properties-common \
     git \
     && rm -rf /var/lib/apt/lists/*
 
