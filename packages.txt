@@ -1,0 +1,3 @@
+# For Railway/Render deployments
+python-3.12
+

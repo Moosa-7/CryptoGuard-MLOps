@@ -11,8 +11,8 @@ import os
 # Add project root to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# API URL (Internal Docker Network)
-API_URL = "http://127.0.0.1:8000"
+# API URL - Use environment variable or default to localhost
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 st.set_page_config(page_title="CryptoGuard AI", layout="wide")
 
