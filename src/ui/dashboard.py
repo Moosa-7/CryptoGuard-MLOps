@@ -252,9 +252,30 @@ elif page == "👥 Customer Segmentation":
             cluster_name = "VIP / High-Net-Worth" if cluster_id == 1 else "Standard Tier"
             
             st.divider()
-            if cluster_name == "VIP / High-Net-Worth":
+            # Result Display with Business Logic
+        if 'segment_res' in st.session_state:
+            res = st.session_state['segment_res']
+            cluster_id = res.get('cluster', -1) 
+            
+            # --- THE FIX: SWAP THE MAPPING ---
+            # If your model predicts 0 for high values, then 0 is VIP.
+            # We treat 0 as VIP and 1 as Standard (or vice versa based on observation).
+            
+            if cluster_id == 0:  # <--- CHANGED FROM 1 TO 0 (Try this flip)
+                cluster_name = "VIP / High-Net-Worth"
+                recommendation = "**Recommendation:** Assign dedicated account manager. Offer zero-fee OTC desk."
+                box_color = "success" # Green
+            else:
+                cluster_name = "Standard Tier"
+                recommendation = "**Recommendation:** Send 'Crypto 101' educational emails. Encourage recurring buy setup."
+                box_color = "info" # Blue
+            
+            st.divider()
+            
+            # Display Dynamic Result
+            if box_color == "success":
                 st.success(f"### 🏆 Classification: {cluster_name}")
-                st.markdown("**Recommendation:** Assign dedicated account manager. Offer zero-fee OTC desk.")
             else:
                 st.info(f"### 👤 Classification: {cluster_name}")
-                st.markdown("**Recommendation:** Send 'Crypto 101' educational emails. Encourage recurring buy setup.")
+                
+            st.markdown(recommendation)
