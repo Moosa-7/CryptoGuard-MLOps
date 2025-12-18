@@ -1,0 +1,22 @@
+artifact_path: file:C:/Users/PC/OneDrive/Desktop/CryptoGuard-MLOps/mlruns/2/models/m-5ed6ef074d9d46919e699b8d57f57bad/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.7
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.8.0
+mlflow_version: 3.7.0
+model_id: m-5ed6ef074d9d46919e699b8d57f57bad
+model_size_bytes: 681
+model_uuid: m-5ed6ef074d9d46919e699b8d57f57bad
+prompts: null
+run_id: 9b089fd2eba44f10a8981230e9bd68a5
+utc_time_created: '2025-12-17 22:40:52.620311'

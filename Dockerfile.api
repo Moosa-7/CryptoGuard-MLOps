@@ -1,0 +1,23 @@
+# Use Python 3.9 Slim (Lightweight)
+FROM python:3.9-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies (needed for some ML libraries)
+RUN apt-get update && apt-get install -y gcc
+
+# Install Python dependencies
+COPY requirements.txt .
+# Increase timeout to 1000 seconds
+RUN pip install --default-timeout=10000 --no-cache-dir -r requirements.txt
+
+# Copy the API code and the Trained Models
+COPY api/ api/
+COPY models/ models/
+
+# Expose the API port
+EXPOSE 8000
+
+# Start the API
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]

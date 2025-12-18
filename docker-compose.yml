@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  # The Backend Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    container_name: fintech_api
+
+  # The Frontend Service
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    ports:
+      - "8501:8501"
+    environment:
+      # This tells the frontend where to find the API
+      # Inside Docker network, we use the service name "api" instead of "127.0.0.1"
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+    container_name: fintech_dashboard
