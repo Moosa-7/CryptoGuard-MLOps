@@ -279,3 +279,12 @@ elif page == "👥 Customer Segmentation":
                 st.info(f"### 👤 Classification: {cluster_name}")
                 
             st.markdown(recommendation)
+            
+            # ... inside the segmentation section ...
+if response.status_code == 200:
+    res = response.json()
+    cluster_id = res.get('cluster', -1)
+
+    # --- DEBUG LINE (REMOVE LATER) ---
+    st.warning(f"🤖 RAW MODEL OUTPUT: Cluster {cluster_id}") 
+    # ---------------------------------
