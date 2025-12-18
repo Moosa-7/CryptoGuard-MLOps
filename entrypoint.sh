@@ -19,5 +19,7 @@ echo "⏳ Waiting 5 seconds for backend..."
 sleep 5
 
 # 4. Start Streamlit (Frontend)
+# Default to 8501 if PORT is not set
+PORT=${PORT:-8501}
 echo "🎨 Starting Streamlit Frontend on port $PORT..."
 streamlit run src/ui/dashboard.py --server.port $PORT --server.address 0.0.0.0
