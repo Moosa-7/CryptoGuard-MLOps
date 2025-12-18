@@ -18,7 +18,7 @@ st.markdown("### Enterprise-Grade Financial Intelligence System")
 page = st.sidebar.selectbox("Choose Module", [
     "💰 Bitcoin Forecaster", 
     "📊 Market Correlation",
-    "👥 User Segmentation"
+    "👥 Customer Segmentation" # Renamed for clarity
 ])
 
 # ==========================================
@@ -31,14 +31,12 @@ if page == "💰 Bitcoin Forecaster":
     ticker = "BTC-USD"
     data = yf.download(ticker, period="3mo", interval="1d", progress=False)
     
-    # Fix MultiIndex if present
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.get_level_values(0)
     
     last_row = data.iloc[-1]
     prev_row = data.iloc[-2]
     
-    # 2. Display Live Metrics
     col1, col2, col3 = st.columns(3)
     current_price = last_row['Close']
     change = current_price - prev_row['Close']
@@ -47,14 +45,12 @@ if page == "💰 Bitcoin Forecaster":
     col2.metric("Volume", f"{last_row['Volume']:,}")
     col3.metric("Volatility (7d)", f"{data['Close'].pct_change().rolling(7).std().iloc[-1]:.4f}")
 
-    # 3. Chart
     fig = go.Figure(data=[go.Candlestick(x=data.index,
                 open=data['Open'], high=data['High'],
                 low=data['Low'], close=data['Close'])])
     fig.update_layout(title="BTC-USD Price Action (3 Months)", height=400)
     st.plotly_chart(fig, use_container_width=True)
 
-    # 4. AI Prediction Section
     st.subheader("🤖 AI Analysis")
     if st.button("Generate Forecast"):
         closes = data['Close']
@@ -83,7 +79,7 @@ if page == "💰 Bitcoin Forecaster":
             st.error(f"API Error: {e}")
 
 # ==========================================
-# PAGE 2: MARKET CORRELATION (EDUCATIONAL)
+# PAGE 2: MARKET CORRELATION
 # ==========================================
 elif page == "📊 Market Correlation":
     st.header("Global Asset Risk Radar")
@@ -93,24 +89,19 @@ elif page == "📊 Market Correlation":
     * **Negative Correlation (Red):** Moving Apart.
     """)
     
-    # 1. Define Tickers
     tickers = ['BTC-USD', 'ETH-USD', '^GSPC', 'GC=F', 'DX-Y.NYB']
     labels = ['Bitcoin', 'Ethereum', 'S&P 500', 'Gold', 'US Dollar']
     
     if st.button("Analyze & Explain"):
         with st.spinner("Analyzing global markets..."):
-            # Download Data
             raw_data = yf.download(tickers, period="6mo", progress=False)['Close']
             
-            # Clean Columns
             if len(raw_data.columns) == len(labels):
                raw_data.columns = labels
             
-            # Calculate Correlation
             returns = raw_data.pct_change().dropna()
             corr_matrix = returns.corr()
             
-            # Draw Heatmap
             fig = px.imshow(
                 corr_matrix, 
                 text_auto=True, 
@@ -121,14 +112,11 @@ elif page == "📊 Market Correlation":
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # --- EDUCATIONAL INSIGHTS ENGINE ---
             st.markdown("### 🧠 AI Market Diagnosis")
-            
             try:
                 btc_sp500 = corr_matrix.loc['Bitcoin', 'S&P 500']
                 btc_gold = corr_matrix.loc['Bitcoin', 'Gold']
                 
-                # SCENARIO 1: RISK-ON (Follows Stocks)
                 if btc_sp500 > 0.5:
                     st.error(f"🚨 **Current State: RISK-ON (Correlation: {btc_sp500:.2f})**")
                     st.write("Bitcoin is following the stock market closely.")
@@ -139,7 +127,6 @@ elif page == "📊 Market Correlation":
                         * **Strategy:** Watch the stock market news (Interest rates, Earnings) to predict Bitcoin.
                         """)
                 
-                # SCENARIO 2: SAFE HAVEN (Follows Gold)
                 elif btc_gold > 0.4:
                     st.success(f"🛡️ **Current State: DIGITAL GOLD (Correlation: {btc_gold:.2f})**")
                     st.write("Bitcoin is acting as a hedge against inflation/fear.")
@@ -149,13 +136,11 @@ elif page == "📊 Market Correlation":
                         * **Implication:** Bitcoin might rise even if the stock market falls.
                         """)
 
-                # SCENARIO 3: DECOUPLED (Independent)
                 else:
                     st.info(f"🛸 **Current State: DECOUPLED (Correlation: {btc_sp500:.2f})**")
                     st.write("Bitcoin is ignoring traditional markets. It is moving based on Crypto-specific news.")
                     
                     st.markdown("#### 🔍 Key Drivers When Decoupled:")
-                    
                     c1, c2, c3 = st.columns(3)
                     with c1:
                         with st.expander("⛏️ The Halving"):
@@ -176,21 +161,26 @@ elif page == "📊 Market Correlation":
                 st.warning("Could not generate text insights due to data alignment issues.")
 
 # ==========================================
-# PAGE 3: SEGMENTATION
+# PAGE 3: USER SEGMENTATION (REFACTORED)
 # ==========================================
-elif page == "👥 User Segmentation":
-    st.header("Customer Clustering (PCA Visualization)")
+elif page == "👥 Customer Segmentation":
+    st.header("Customer Tier Classification")
+    st.markdown("Identify user personas based on their **Spending** and **Activity** habits.")
     
-    col1, col2 = st.columns([1, 3])
+    col1, col2 = st.columns([1, 2])
     
     with col1:
-        st.info("Adjust Principal Components to find user segments.")
-        pc1 = st.slider("PC1 (Variance A)", -5.0, 15.0, 0.0)
-        pc2 = st.slider("PC2 (Variance B)", -5.0, 15.0, 0.0)
+        st.subheader("🕵️ User Simulator")
+        st.info("Adjust the sliders to simulate a user's behavior.")
         
-        if st.button("Classify User"):
+        # Renamed sliders to Business Terms
+        spending = st.slider("💰 Spending Volume (PC1)", -5.0, 15.0, 0.0, help="Higher = Higher Transaction Amounts")
+        frequency = st.slider("🔄 Activity Frequency (PC2)", -5.0, 15.0, 0.0, help="Higher = More Logins/Trades per day")
+        
+        if st.button("Classify User Tier"):
             try:
-                response = requests.post(f"{API_URL}/predict/segment", json={"pc1": pc1, "pc2": pc2})
+                # We still send 'pc1' and 'pc2' to the API, but the user sees "Spending" and "Frequency"
+                response = requests.post(f"{API_URL}/predict/segment", json={"pc1": spending, "pc2": frequency})
                 if response.status_code == 200:
                     st.session_state['segment_res'] = response.json()
                 else:
@@ -198,15 +188,73 @@ elif page == "👥 User Segmentation":
             except Exception as e:
                 st.error(f"Connection Error: {e}")
 
+        # EDUCATIONAL PANEL
+        with st.expander("📚 How to interpret this?"):
+            st.markdown("""
+            **1. Spending Volume (X-Axis):**
+            * **Left:** Small retail traders (micro-transactions).
+            * **Right:** Whales / Institutional Investors (large volume).
+
+            **2. Activity Frequency (Y-Axis):**
+            * **Bottom:** "HODLers" (Buy once, come back in a year).
+            * **Top:** Day Traders (Trading every hour).
+            """)
+
     with col2:
-        x_dummy = np.concatenate([np.random.normal(0, 1, 100), np.random.normal(10, 2, 100)])
-        y_dummy = np.concatenate([np.random.normal(0, 1, 100), np.random.normal(10, 2, 100)])
+        # Mock Visualization with Business Labels
+        # Standard Users (Cluster 0) = Lower Spend, Variable Frequency
+        x_std = np.random.normal(0, 2, 100)
+        y_std = np.random.normal(0, 2, 100)
         
-        fig = px.scatter(x=x_dummy, y=y_dummy, opacity=0.3, labels={'x': 'PC1', 'y': 'PC2'}, title="User Cluster Map")
-        fig.add_trace(go.Scatter(x=[pc1], y=[pc2], mode='markers', marker=dict(color='red', size=15), name="Current User"))
+        # VIP Users (Cluster 1) = High Spend, High Frequency
+        x_vip = np.random.normal(8, 2, 50)
+        y_vip = np.random.normal(5, 2, 50)
         
+        fig = go.Figure()
+        
+        # Add Cluster 0 (Standard)
+        fig.add_trace(go.Scatter(
+            x=x_std, y=y_std, 
+            mode='markers', name='Standard Tier',
+            marker=dict(color='lightblue', opacity=0.6)
+        ))
+        
+        # Add Cluster 1 (VIP)
+        fig.add_trace(go.Scatter(
+            x=x_vip, y=y_vip, 
+            mode='markers', name='VIP / High-Net-Worth',
+            marker=dict(color='gold', opacity=0.8)
+        ))
+
+        # Add the "Current User" Dot
+        fig.add_trace(go.Scatter(
+            x=[spending], y=[frequency], 
+            mode='markers', name='THIS USER',
+            marker=dict(color='red', size=20, symbol='star')
+        ))
+
+        fig.update_layout(
+            title="Customer Persona Map",
+            xaxis_title="Spending Volume (Low → High)",
+            yaxis_title="Activity Frequency (Low → High)",
+            height=500
+        )
         st.plotly_chart(fig, use_container_width=True)
         
+        # Result Display with Business Logic
         if 'segment_res' in st.session_state:
             res = st.session_state['segment_res']
-            st.success(f"User belongs to: **{res['segment_name']}**")
+            cluster_id = res.get('cluster', -1) # Default to -1 if missing
+            
+            # Map Cluster IDs to Names
+            # Note: This assumes your K-Means assigned 0 to Standard and 1 to VIP.
+            # If your model training flipped them, swap these names.
+            cluster_name = "VIP / High-Net-Worth" if cluster_id == 1 else "Standard Tier"
+            
+            st.divider()
+            if cluster_name == "VIP / High-Net-Worth":
+                st.success(f"### 🏆 Classification: {cluster_name}")
+                st.markdown("**Recommendation:** Assign dedicated account manager. Offer zero-fee OTC desk.")
+            else:
+                st.info(f"### 👤 Classification: {cluster_name}")
+                st.markdown("**Recommendation:** Send 'Crypto 101' educational emails. Encourage recurring buy setup.")
