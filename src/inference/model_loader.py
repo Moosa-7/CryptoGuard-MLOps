@@ -9,11 +9,18 @@ class ModelLoader:
         self.models_dir = os.path.abspath(models_dir)
         self.fraud_model = None
         self.fraud_threshold = 0.5
+        self.fraud_pca = None
         self.btc_price_model = None
         self.btc_direction_model = None
         self.segmentation_model = None
         
+        # Training samples for explanations and drift detection
+        self.fraud_training_sample = None
+        self.btc_training_sample = None
+        self.fraud_reference_stats = None
+        
         self._load_models()
+        self._load_training_samples()
 
     def _load_models(self):
         """
@@ -31,7 +38,15 @@ class ModelLoader:
                 thresh_path = os.path.join(self.models_dir, "fraud/threshold.pkl")
                 if os.path.exists(thresh_path):
                     self.fraud_threshold = joblib.load(thresh_path)
-                print(f"   ✅ Fraud Model Loaded (Threshold: {self.fraud_threshold:.4f})")
+                
+                # Load PCA transformer if exists
+                pca_path = os.path.join(self.models_dir, "fraud_pca.pkl")
+                if os.path.exists(pca_path):
+                    self.fraud_pca = joblib.load(pca_path)
+                    print(f"   ✅ Fraud Model & PCA Loaded (Threshold: {self.fraud_threshold:.4f})")
+                else:
+                    print(f"   ✅ Fraud Model Loaded (Threshold: {self.fraud_threshold:.4f})")
+                    print("   ⚠️ PCA transformer not found (may need for explanations)")
             else:
                 print("   ⚠️ Fraud Model file not found.")
         except Exception as e:
@@ -102,3 +117,84 @@ class ModelLoader:
         if not self.segmentation_model:
             return -1
         return int(self.segmentation_model.predict(features)[0])
+    
+    def _find_data_file(self, filename):
+        """
+        Find data file in multiple possible locations.
+        """
+        possible_paths = [
+            os.path.join(os.getcwd(), filename),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), filename),  # Project root
+            os.path.join(self.models_dir.replace('models', ''), filename),  # Relative to models dir
+            os.path.join(os.path.abspath('.'), filename),
+            filename  # Try relative path as last resort
+        ]
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
+        return None
+    
+    def _load_training_samples(self):
+        """
+        Load training data samples for explanations and drift detection.
+        """
+        try:
+            # Load fraud training data - use helper to find file
+            fraud_data_path = self._find_data_file("data/creditcard.csv")
+            if fraud_data_path and os.path.exists(fraud_data_path):
+                df_fraud = pd.read_csv(fraud_data_path)
+                # Sample 1000 rows for performance
+                df_fraud_sample = df_fraud.sample(n=min(1000, len(df_fraud)), random_state=42)
+                
+                # Apply PCA if available
+                if self.fraud_pca is not None:
+                    X_fraud = df_fraud_sample.drop(['Class', 'Time'], axis=1, errors='ignore')
+                    X_fraud_pca = self.fraud_pca.transform(X_fraud)
+                    self.fraud_training_sample = pd.DataFrame(
+                        X_fraud_pca, 
+                        columns=[f'PC{i+1}' for i in range(X_fraud_pca.shape[1])]
+                    )
+                    print("   ✅ Fraud training sample loaded (PCA transformed)")
+                else:
+                    # Store raw features sample
+                    X_fraud = df_fraud_sample.drop(['Class', 'Time'], axis=1, errors='ignore')
+                    self.fraud_training_sample = X_fraud.iloc[:1000]
+                    print("   ✅ Fraud training sample loaded (raw features)")
+                
+                # Calculate reference statistics for drift detection (we'll do this lazily if needed)
+                self.fraud_reference_stats = None  # Will be calculated on demand
+            else:
+                checked_paths = [
+                    os.path.join(os.getcwd(), "data/creditcard.csv"),
+                    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data/creditcard.csv"),
+                    "data/creditcard.csv"
+                ]
+                print(f"   ⚠️ Fraud training data not found. Checked paths: {checked_paths}")
+        except Exception as e:
+            print(f"   ⚠️ Error loading training samples: {e}")
+        
+        try:
+            # Load BTC training data (if available) - use helper
+            btc_data_path = self._find_data_file("data/raw/btc_usd.parquet")
+            if btc_data_path and os.path.exists(btc_data_path):
+                df_btc = pd.read_parquet(btc_data_path)
+                # Extract feature columns if they exist
+                feature_cols = ['Close', 'Volume', 'Lag_1', 'Returns', 'MA_7', 'MA_30', 'Volatility']
+                available_cols = [col for col in feature_cols if col in df_btc.columns]
+                if available_cols:
+                    self.btc_training_sample = df_btc[available_cols].dropna().iloc[:1000]
+                    print("   ✅ BTC training sample loaded")
+        except Exception as e:
+            print(f"   ⚠️ Error loading BTC training sample: {e}")
+    
+    def get_reference_statistics(self):
+        """
+        Get reference statistics for drift detection.
+        """
+        if self.fraud_reference_stats is None and self.fraud_training_sample is not None:
+            try:
+                from src.monitoring.drift_detection import calculate_reference_statistics
+                self.fraud_reference_stats = calculate_reference_statistics(self.fraud_training_sample)
+            except Exception as e:
+                print(f"Error calculating reference statistics: {e}")
+        return self.fraud_reference_stats

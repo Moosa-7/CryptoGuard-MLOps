@@ -11,8 +11,17 @@ from xgboost import XGBRegressor, XGBClassifier
 from src.features.btc_features import process_btc_data
 from src.evaluation.metrics import get_btc_metrics
 
-# Ensure models directory exists
-os.makedirs("models/btc", exist_ok=True)
+# ==========================================
+# 🛠️ FIXED: PATH LOGIC FOR RAILWAY
+# ==========================================
+# Get the absolute path of the directory where THIS script is located
+script_dir = os.path.dirname(os.path.abspath(__file__))
+# Move up to the project root (from src/training/ to root)
+project_root = os.path.abspath(os.path.join(script_dir, "../../"))
+# Define the absolute path for the models folder
+model_base_path = os.path.join(project_root, "models", "btc")
+os.makedirs(model_base_path, exist_ok=True)
+# ==========================================
 
 def train_regression_baseline(X_train, y_train, X_test, y_test, y_prev_test):
     """
@@ -52,13 +61,12 @@ def optimize_xgboost_price(trial, X_train, y_train, X_test, y_test, y_prev_test)
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
     
-    # We optimize for RMSE
     rmse = np.sqrt(mean_squared_error(y_test, preds))
     return rmse
 
 def train_challenger_price(X_train, y_train, X_test, y_test, y_prev_test):
     """
-    Tunes XGBoost Regressor for Price.
+    Tunes XGBoost Regressor for Price and SAVES REAL BINARY.
     """
     print("\n🔸 Tuning Price Model (XGBoost Regressor)...")
     study = optuna.create_study(direction="minimize")
@@ -75,13 +83,15 @@ def train_challenger_price(X_train, y_train, X_test, y_test, y_prev_test):
         mlflow.log_metrics(metrics)
         mlflow.sklearn.log_model(best_model, "model")
         
-        joblib.dump(best_model, "models/btc/xgboost_price.pkl")
+        # FIXED: Use absolute path for saving
+        save_path = os.path.join(model_base_path, "xgboost_price.pkl")
+        joblib.dump(best_model, save_path)
+        print(f"✅ Price Model Saved: {save_path}")
         return metrics
 
 def train_challenger_direction(X_train, y_train_dir, X_test, y_test_dir):
     """
     Tunes XGBoost Classifier for Direction (Up/Down).
-    Independent of price prediction.
     """
     print("\n🔸 Tuning Direction Model (XGBoost Classifier)...")
     
@@ -98,7 +108,6 @@ def train_challenger_direction(X_train, y_train_dir, X_test, y_test_dir):
         model = XGBClassifier(**param)
         model.fit(X_train, y_train_dir)
         preds = model.predict(X_test)
-        # Minimize Error Rate (1 - Accuracy)
         return 1.0 - np.mean(preds == y_test_dir)
 
     study = optuna.create_study(direction="minimize")
@@ -112,28 +121,28 @@ def train_challenger_direction(X_train, y_train_dir, X_test, y_test_dir):
         mlflow.log_metric("accuracy", acc)
         mlflow.sklearn.log_model(best_model, "model")
         
-        joblib.dump(best_model, "models/btc/xgboost_direction.pkl")
+        # FIXED: Use absolute path for saving
+        save_path = os.path.join(model_base_path, "xgboost_direction.pkl")
+        joblib.dump(best_model, save_path)
+        print(f"✅ Direction Model Saved: {save_path}")
         print(f"   Best Directional Acc: {acc*100:.2f}%")
 
 if __name__ == "__main__":
     mlflow.set_experiment("BTC_Forecasting")
     
-    # 1. Load Data (Live)
+    # 1. Load Data
     X, y_price, y_dir = process_btc_data()
     
     if X is None:
         print("❌ Failed to load data.")
         exit(1)
 
-    # 2. Time-Series Split (No random shuffling!)
-    # We train on past, test on future.
+    # 2. Time-Series Split
     split_idx = int(len(X) * 0.8)
     X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
     y_price_train, y_price_test = y_price.iloc[:split_idx], y_price.iloc[split_idx:]
     y_dir_train, y_dir_test = y_dir.iloc[:split_idx], y_dir.iloc[split_idx:]
     
-    # We need "Previous Day Price" for directional accuracy calc in Regression
-    # X_test['Lag_1'] contains yesterday's price
     y_prev_test = X_test['Lag_1']
     
     # 3. Run Experiments

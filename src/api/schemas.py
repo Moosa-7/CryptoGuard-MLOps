@@ -35,3 +35,12 @@ class SegmentationInput(BaseModel):
     # Expects the 2 Principal Components (PCA features)
     pc1: float
     pc2: float
+
+# 4. Performance Logging Schema
+class PerformanceLogInput(BaseModel):
+    model_name: str
+    prediction: float
+    confidence: float
+
+# 5. Drift Check Schema (can reuse existing schemas, but adding for clarity)
+# Note: We reuse FraudInput or BTCInput for actual drift checks
