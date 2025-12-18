@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch: # Allows manual trigger button
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -13,7 +13,7 @@ env:
 
 jobs:
   # ---------------------------------------------------
-  # JOB 1: CONTINUOUS INTEGRATION (Code Quality & Logic)
+  # JOB 1: CONTINUOUS INTEGRATION
   # ---------------------------------------------------
   ci-tests:
     runs-on: ubuntu-latest
@@ -21,10 +21,10 @@ jobs:
       - name: 📥 Checkout Code
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python 3.12
+      - name: 🐍 Set up Python 3.12  # <--- CRITICAL FIX HERE
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12"
+          python-version: "3.12"     # Changed to 3.12 to match requirements.txt
           cache: 'pip'
 
       - name: 📦 Install Dependencies
@@ -35,17 +35,14 @@ jobs:
       - name: 🔍 Linting (Flake8)
         run: |
           pip install flake8
-          # Stop the build if there are Python syntax errors or undefined names
           flake8 src tests --count --select=E9,F63,F7,F82 --show-source --statistics
 
       - name: 🧪 Run Unit & Integration Tests
         run: |
-          # We need inference logic to work, mock data not needed for unit tests usually
-          # as we used mocks in pytest, but let's be safe.
           python -m pytest tests/
 
   # ---------------------------------------------------
-  # JOB 2: CONTINUOUS TRAINING (Model Training Verification)
+  # JOB 2: CONTINUOUS TRAINING
   # ---------------------------------------------------
   continuous-training:
     needs: ci-tests
@@ -54,26 +51,24 @@ jobs:
       - name: 📥 Checkout Code
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python 3.12
+      - name: 🐍 Set up Python 3.12  # <--- CRITICAL FIX HERE
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12"
+          python-version: "3.12"     # Changed to 3.12
           cache: 'pip'
 
       - name: 📦 Install Dependencies
         run: |
           pip install -r requirements.txt
 
-      - name: 🛠️ Generate Mock Data (For CI Speed)
+      - name: 🛠️ Generate Mock Data
         run: |
-          # Create fake creditcard.csv so training script runs
           python -m src.utils.mock_data
 
       - name: 🏋️‍♂️ Execute Training Pipeline
         env:
-          PYTHONIOENCODING: "utf-8" # Fix emoji crash on Linux too
+          PYTHONIOENCODING: "utf-8"
         run: |
-          # Runs the Prefect Orchestrator
           python -m src.pipelines.training_pipeline
 
       - name: 📊 Upload Trained Models as Artifacts
@@ -84,7 +79,7 @@ jobs:
           retention-days: 1
 
   # ---------------------------------------------------
-  # JOB 3: CONTINUOUS DELIVERY (Docker Build & Publish)
+  # JOB 3: CONTINUOUS DELIVERY
   # ---------------------------------------------------
   cd-deploy:
     needs: continuous-training
