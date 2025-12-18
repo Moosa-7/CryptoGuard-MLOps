@@ -161,122 +161,73 @@ elif page == "📊 Market Correlation":
                 st.warning("Could not generate text insights due to data alignment issues.")
 
 # ==========================================
-# PAGE 3: USER SEGMENTATION (REFACTORED)
+# PAGE 4: CUSTOMER SEGMENTATION
 # ==========================================
 elif page == "👥 Customer Segmentation":
     st.header("Customer Tier Classification")
-    st.markdown("Identify user personas based on their **Spending** and **Activity** habits.")
     
     col1, col2 = st.columns([1, 2])
     
     with col1:
         st.subheader("🕵️ User Simulator")
-        st.info("Adjust the sliders to simulate a user's behavior.")
+        spending = st.slider("💰 Spending Volume (PC1)", -5.0, 15.0, 0.0)
+        frequency = st.slider("🔄 Activity Frequency (PC2)", -5.0, 15.0, 0.0)
         
-        # Renamed sliders to Business Terms
-        spending = st.slider("💰 Spending Volume (PC1)", -5.0, 15.0, 0.0, help="Higher = Higher Transaction Amounts")
-        frequency = st.slider("🔄 Activity Frequency (PC2)", -5.0, 15.0, 0.0, help="Higher = More Logins/Trades per day")
+        # Initialize result variables to avoid NameError later
+        cluster_name = "Unknown"
+        box_color = "gray"
         
-        if st.button("Classify User Tier"):
-            try:
-                # We still send 'pc1' and 'pc2' to the API, but the user sees "Spending" and "Frequency"
-                response = requests.post(f"{API_URL}/predict/segment", json={"pc1": spending, "pc2": frequency})
-                if response.status_code == 200:
-                    st.session_state['segment_res'] = response.json()
+        # AUTOMATIC PREDICTION (Inside Try Block)
+        try:
+            response = requests.post(f"{API_URL}/predict/segment", json={"pc1": spending, "pc2": frequency})
+            
+            # ✅ CHECK INSIDE THE BLOCK
+            if response.status_code == 200:
+                res = response.json()
+                cluster_id = res.get('cluster', -1)
+                
+                # Logic: Cluster 1 is VIP (based on our retraining)
+                if cluster_id == 1: 
+                    cluster_name = "VIP / High-Net-Worth"
+                    box_color = "success"
                 else:
-                    st.error("API Error")
-            except Exception as e:
-                st.error(f"Connection Error: {e}")
+                    cluster_name = "Standard Tier"
+                    box_color = "info"
+            else:
+                st.warning("⚠️ API is starting up...")
+                
+        except Exception as e:
+            st.error(f"⚠️ Connection Error: {e}")
+            # Stop execution here if API is down
+            st.stop()
 
         # EDUCATIONAL PANEL
-        with st.expander("📚 How to interpret this?"):
+        with st.expander("📚 Interpretation Guide"):
             st.markdown("""
-            **1. Spending Volume (X-Axis):**
-            * **Left:** Small retail traders (micro-transactions).
-            * **Right:** Whales / Institutional Investors (large volume).
-
-            **2. Activity Frequency (Y-Axis):**
-            * **Bottom:** "HODLers" (Buy once, come back in a year).
-            * **Top:** Day Traders (Trading every hour).
+            * **High Spending + High Freq** = VIP / Institution
+            * **Low Spending + Low Freq** = Retail / HODLer
             """)
 
     with col2:
-        # Mock Visualization with Business Labels
-        # Standard Users (Cluster 0) = Lower Spend, Variable Frequency
-        x_std = np.random.normal(0, 2, 100)
-        y_std = np.random.normal(0, 2, 100)
-        
-        # VIP Users (Cluster 1) = High Spend, High Frequency
-        x_vip = np.random.normal(8, 2, 50)
-        y_vip = np.random.normal(5, 2, 50)
+        # Visualization
+        x_std = np.random.normal(2, 1.5, 100)
+        y_std = np.random.normal(2, 1.5, 100)
+        x_vip = np.random.normal(12, 1.5, 50)
+        y_vip = np.random.normal(12, 1.5, 50)
         
         fig = go.Figure()
+        fig.add_trace(go.Scatter(x=x_std, y=y_std, mode='markers', name='Standard Tier', marker=dict(color='lightblue')))
+        fig.add_trace(go.Scatter(x=x_vip, y=y_vip, mode='markers', name='VIP Tier', marker=dict(color='gold')))
+        fig.add_trace(go.Scatter(x=[spending], y=[frequency], mode='markers', name='THIS USER', marker=dict(color='red', size=20, symbol='star')))
         
-        # Add Cluster 0 (Standard)
-        fig.add_trace(go.Scatter(
-            x=x_std, y=y_std, 
-            mode='markers', name='Standard Tier',
-            marker=dict(color='lightblue', opacity=0.6)
-        ))
-        
-        # Add Cluster 1 (VIP)
-        fig.add_trace(go.Scatter(
-            x=x_vip, y=y_vip, 
-            mode='markers', name='VIP / High-Net-Worth',
-            marker=dict(color='gold', opacity=0.8)
-        ))
-
-        # Add the "Current User" Dot
-        fig.add_trace(go.Scatter(
-            x=[spending], y=[frequency], 
-            mode='markers', name='THIS USER',
-            marker=dict(color='red', size=20, symbol='star')
-        ))
-
-        fig.update_layout(
-            title="Customer Persona Map",
-            xaxis_title="Spending Volume (Low → High)",
-            yaxis_title="Activity Frequency (Low → High)",
-            height=500
-        )
+        fig.update_layout(title="Persona Map", xaxis_title="Spending", yaxis_title="Frequency", height=500)
         st.plotly_chart(fig, use_container_width=True)
         
-        # Result Display with Business Logic
-        if 'segment_res' in st.session_state:
-            res = st.session_state['segment_res']
-            cluster_id = res.get('cluster', -1) # Default to -1 if missing
-            
-            # Map Cluster IDs to Names
-            # Note: This assumes your K-Means assigned 0 to Standard and 1 to VIP.
-            # If your model training flipped them, swap these names.
-            cluster_name = "VIP / High-Net-Worth" if cluster_id == 1 else "Standard Tier"
-            
-            st.divider()
-            # Result Display with Business Logic
-        if 'segment_res' in st.session_state:
-            res = st.session_state['segment_res']
-            cluster_id = res.get('cluster', -1) 
-            
-            # --- THE FIX: SWAP THE MAPPING ---
-            # If your model predicts 0 for high values, then 0 is VIP.
-            # We treat 0 as VIP and 1 as Standard (or vice versa based on observation).
-            
-            if cluster_id == 0:  # <--- CHANGED FROM 1 TO 0 (Try this flip)
-                cluster_name = "VIP / High-Net-Worth"
-                recommendation = "**Recommendation:** Assign dedicated account manager. Offer zero-fee OTC desk."
-                box_color = "success" # Green
-            else:
-                cluster_name = "Standard Tier"
-                recommendation = "**Recommendation:** Send 'Crypto 101' educational emails. Encourage recurring buy setup."
-                box_color = "info" # Blue
-            
-            st.divider()
-            
-            # Display Dynamic Result
-            if box_color == "success":
-                st.success(f"### 🏆 Classification: {cluster_name}")
-            else:
-                st.info(f"### 👤 Classification: {cluster_name}")
-                
-            st.markdown(recommendation)
-    # ---------------------------------
+        # Result Display (Safe because variables are initialized)
+        st.divider()
+        if box_color == "success":
+            st.success(f"### 🏆 Classification: {cluster_name}")
+            st.markdown("**Recommendation:** Assign Dedicated Account Manager.")
+        elif box_color == "info":
+            st.info(f"### 👤 Classification: {cluster_name}")
+            st.markdown("**Recommendation:** Send Standard Promo Emails.")
