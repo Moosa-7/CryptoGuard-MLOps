@@ -37,7 +37,7 @@ if page == "💰 Bitcoin Forecaster":
     
     # 1. Fetch Live Data for Context
     ticker = "BTC-USD"
-    data = yf.download(ticker, period="3mo", interval="1d", progress=False)
+    data = yf.download(ticker, period="3mo", interval="1d", progress=False, auto_adjust=True)
     
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.get_level_values(0)
@@ -51,7 +51,7 @@ if page == "💰 Bitcoin Forecaster":
     
     col1.metric("Current Price", f"${current_price:,.2f}", f"{change:,.2f}")
     col2.metric("Volume", f"{last_row['Volume']:,}")
-    col3.metric("Volatility (7d)", f"{data['Close'].pct_change().rolling(7).std().iloc[-1]:.4f}")
+    col3.metric("Volatility (7d)", f"{data['Close'].pct_change(fill_method=None).rolling(7).std().iloc[-1]:.4f}")
 
     # Create candlestick chart
     fig = go.Figure(data=[go.Candlestick(x=data.index,
@@ -86,7 +86,7 @@ if page == "💰 Bitcoin Forecaster":
             ))
     
     fig.update_layout(title="BTC-USD Price Action (3 Months)", height=400)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     st.subheader("🤖 AI Analysis")
     forecast_clicked = st.button("Generate Forecast")
@@ -97,10 +97,10 @@ if page == "💰 Bitcoin Forecaster":
             "close": float(closes.iloc[-1]),
             "volume": float(data['Volume'].iloc[-1]),
             "lag_1": float(closes.iloc[-2]),
-            "daily_return": float(closes.pct_change().iloc[-1]),
+            "daily_return": float(closes.pct_change(fill_method=None).iloc[-1]),
             "ma_7": float(closes.rolling(7).mean().iloc[-1]),
             "ma_30": float(closes.rolling(30).mean().iloc[-1]),
-            "volatility": float(closes.pct_change().rolling(7).std().iloc[-1])
+            "volatility": float(closes.pct_change(fill_method=None).rolling(7).std().iloc[-1])
         }
         
         try:
@@ -146,14 +146,14 @@ if page == "💰 Bitcoin Forecaster":
                             df_importance = pd.DataFrame(exp_data['shap_explanation']['feature_importance'])
                             fig = px.bar(df_importance.head(10), x='importance', y='feature', 
                                         orientation='h', title="Top 10 Features Driving Prediction (SHAP)")
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, width='stretch')
                     
                     with tab2:
                         if exp_data.get('feature_importance'):
                             df_feat = pd.DataFrame(exp_data['feature_importance'])
                             fig = px.bar(df_feat.head(10), x='importance', y='feature',
                                         orientation='h', title="Model Feature Importance")
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, width='stretch')
                 else:
                     st.warning("Could not generate explanations. Model may not support explanations.")
             except Exception as e:
@@ -175,7 +175,7 @@ if page == "💰 Bitcoin Forecaster":
                 fig = px.bar(df_feat.head(10), x='importance', y='feature',
                             orientation='h', title="Top 10 Most Important Features for BTC Price Prediction",
                             labels={'importance': 'Importance Score', 'feature': 'Feature'})
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
             
             with col2:
                 st.markdown("### Insights")
@@ -203,12 +203,12 @@ elif page == "📊 Market Correlation":
     
     if st.button("Analyze & Explain"):
         with st.spinner("Analyzing global markets..."):
-            raw_data = yf.download(tickers, period="6mo", progress=False)['Close']
+            raw_data = yf.download(tickers, period="6mo", progress=False, auto_adjust=True)['Close']
             
             if len(raw_data.columns) == len(labels):
                raw_data.columns = labels
             
-            returns = raw_data.pct_change().dropna()
+            returns = raw_data.pct_change(fill_method=None).dropna()
             corr_matrix = returns.corr()
             
             fig = px.imshow(
@@ -219,7 +219,7 @@ elif page == "📊 Market Correlation":
                 zmin=-1, zmax=1,
                 title="6-Month Correlation Matrix"
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
             
             st.markdown("### 🧠 AI Market Diagnosis")
             try:
@@ -328,7 +328,7 @@ elif page == "👥 Customer Segmentation":
         fig.add_trace(go.Scatter(x=[spending], y=[frequency], mode='markers', name='THIS USER', marker=dict(color='red', size=20, symbol='star')))
         
         fig.update_layout(title="Persona Map", xaxis_title="Spending", yaxis_title="Frequency", height=500)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
         
         # Result Display (Safe because variables are initialized)
         st.divider()
@@ -442,7 +442,7 @@ elif page == "📈 Data Explorer":
                                           nbins=50)
                     else:
                         fig = px.histogram(df, x=selected_col, title=f"Distribution of {selected_col}", nbins=50)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                 
                 with tab3:
                     st.subheader("Correlation Analysis")
@@ -470,7 +470,7 @@ elif page == "📈 Data Explorer":
                                         title="Top 15 Features Correlated with Fraud",
                                         labels={'Correlation': 'Correlation Coefficient with Fraud'})
                             fig.update_layout(yaxis={'categoryorder':'total ascending'})
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, width='stretch')
                             
                             # Interpretation
                             st.markdown("**🔍 Research Insights:**")
@@ -491,7 +491,7 @@ elif page == "📈 Data Explorer":
                                            title="Feature Correlation Matrix (Upper Triangle Only)",
                                            color_continuous_scale='RdBu_r',
                                            zmin=-1, zmax=1)
-                            st.plotly_chart(fig2, use_container_width=True)
+                            st.plotly_chart(fig2, width='stretch')
                         else:
                             # For non-fraud data, show full correlation but mask diagonal
                             mask = np.triu(np.ones_like(corr, dtype=bool), k=1)
@@ -501,7 +501,7 @@ elif page == "📈 Data Explorer":
                                            title="Feature Correlation Matrix",
                                            color_continuous_scale='RdBu_r',
                                            zmin=-1, zmax=1)
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, width='stretch')
                 
                 with tab4:
                     st.subheader("Outlier Detection")
@@ -514,7 +514,7 @@ elif page == "📈 Data Explorer":
                                     title=f"Outlier Detection: {selected_col}")
                     else:
                         fig = px.box(df, y=selected_col, title=f"Outlier Detection: {selected_col}")
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                     
                     outliers_df = detect_outliers(df, selected_col)
                     if not outliers_df.empty:
@@ -591,7 +591,7 @@ elif page == "📈 Data Explorer":
                     st.subheader("Price Time Series")
                     if 'Close' in df.columns:
                         fig = px.line(df, y='Close', title="Bitcoin Price Over Time")
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width='stretch')
                     else:
                         st.info("Close price data not available")
                 
@@ -601,7 +601,7 @@ elif page == "📈 Data Explorer":
                     # Calculate returns and volatility for more meaningful analysis
                     if 'Close' in df.columns:
                         df_analysis = df.copy()
-                        df_analysis['Returns'] = df_analysis['Close'].pct_change()
+                        df_analysis['Returns'] = df_analysis['Close'].pct_change(fill_method=None)
                         df_analysis['Price_Change'] = df_analysis['Close'].diff()
                         df_analysis['Volatility'] = df_analysis['Returns'].rolling(window=7).std()
                         
@@ -623,7 +623,7 @@ elif page == "📈 Data Explorer":
                                     color_continuous_scale='RdYlGn',
                                     hover_data=['Returns']
                                 )
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, width='stretch')
                                 
                                 st.info(f"""
                                 **Insight:** Volume-Price correlation: {volume_corr:.3f}
@@ -643,7 +643,7 @@ elif page == "📈 Data Explorer":
                                     labels={'value': 'Daily Returns (%)', 'count': 'Frequency'}
                                 )
                                 fig.update_traces(marker_color='steelblue')
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, width='stretch')
                                 
                                 # Calculate key statistics
                                 mean_ret = returns_data.mean() * 100
@@ -695,7 +695,7 @@ elif page == "📈 Data Explorer":
                                     yaxis2=dict(title="Volatility (scaled)", side='right', overlaying='y'),
                                     hovermode='x unified'
                                 )
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, width='stretch')
                                 
                                 st.warning("""
                                 **Research Insight: Volatility Clustering**
@@ -790,7 +790,7 @@ elif page == "⚠️ Data Drift Monitor":
                                             color='Drifted',
                                             title="Top 10 Features by Drift Score",
                                             color_discrete_map={True: 'red', False: 'green'})
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, width='stretch')
                         else:
                             st.warning("No drift data available for display.")
                     elif drift_scores and '_error' in drift_scores:
