@@ -20,9 +20,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Copy and set permissions for the startup scripts
-COPY entrypoint.sh start.sh ./
-RUN chmod +x entrypoint.sh start.sh
+COPY start.sh entrypoint.sh ./
+RUN chmod +x start.sh entrypoint.sh
 
-# Run the startup script when the container launches
-# For Railway, use start.sh; for Docker directly, use entrypoint.sh
-CMD ["sh", "start.sh"]
+# Expose Streamlit port (Railway will set PORT env var)
+EXPOSE 8501
+
+# Run the startup script - it handles PORT env var properly
+CMD ["./start.sh"]
