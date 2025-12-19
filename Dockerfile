@@ -23,8 +23,8 @@ COPY . .
 COPY start.sh entrypoint.sh ./
 RUN chmod +x start.sh entrypoint.sh
 
-# Expose Streamlit port (Railway will set PORT env var)
-EXPOSE 8501
+# Expose both API and Streamlit ports
+EXPOSE 8000 8501
 
-# Run the startup script - it handles PORT env var properly
+# Run the startup script - it starts both FastAPI and Streamlit
 CMD ["./start.sh"]

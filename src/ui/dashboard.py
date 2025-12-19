@@ -12,6 +12,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # API URL - Use environment variable or default to localhost
+# In containerized deployments, use localhost since both services run in same container
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 st.set_page_config(page_title="CryptoGuard AI", layout="wide")
@@ -812,8 +813,17 @@ elif page == "⚠️ Data Drift Monitor":
                         st.error(f"Error in drift detection: {drift_scores['_error']}")
                 else:
                     st.error(f"API Error: {response.text}")
+            except requests.exceptions.ConnectionError:
+                st.warning("⚠️ **API Backend Not Connected** - Drift detection requires the FastAPI service to be running.")
+                st.info("💡 **Note:** In deployed environments, the API backend may need to be started separately or may not be available.")
+            except requests.exceptions.Timeout:
+                st.warning("⏱️ API request timed out. Please try again.")
             except Exception as e:
-                st.error(f"Error: {e}")
+                error_msg = str(e)
+                if "Connection refused" in error_msg or "ConnectionError" in error_msg:
+                    st.warning("⚠️ **API Backend Not Connected** - Drift detection requires the FastAPI service.")
+                else:
+                    st.error(f"Error: {error_msg[:100]}...")
 
 # ==========================================
 # PAGE 7: MODEL PERFORMANCE
