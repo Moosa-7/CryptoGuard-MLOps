@@ -392,9 +392,54 @@ elif page == "📈 Data Explorer":
                                 if len(df) > sample_size:
                                     df = df.sample(n=sample_size, random_state=42)
                                 return df
-                        return None
+                        # File not found - generate mock data
+                        st.info("💡 **Using generated sample data** - Original file not available (file >25MB, not in Git). This is normal in deployed environments.")
+                        return _generate_mock_fraud_data_dashboard(sample_size)
                     return None
                 
+                def _generate_mock_fraud_data_dashboard(n_samples=5000):
+                    """Generate mock fraud data for dashboard when file is not available"""
+                    np.random.seed(42)
+                    n_features = 29
+                    data = np.random.randn(n_samples, n_features)
+                    cols = ['Time'] + [f'V{i}' for i in range(1, 29)] + ['Amount']
+                    df = pd.DataFrame(data, columns=cols[:-1])  # All except Class
+                    df['Amount'] = np.abs(np.random.lognormal(mean=3, sigma=1.5, size=n_samples))
+                    fraud_rate = 0.0017
+                    n_fraud = int(n_samples * fraud_rate)
+                    df['Class'] = 0
+                    fraud_indices = np.random.choice(n_samples, size=n_fraud, replace=False)
+                    df.loc[fraud_indices, 'Class'] = 1
+                    if n_fraud > 0:
+                        df.loc[fraud_indices, 'V14'] = df.loc[fraud_indices, 'V14'] - 2
+                        df.loc[fraud_indices, 'V12'] = df.loc[fraud_indices, 'V12'] - 2
+                        df.loc[fraud_indices, 'V10'] = df.loc[fraud_indices, 'V10'] - 1.5
+                    df['Time'] = np.sort(np.random.uniform(0, 48*3600, n_samples))
+                    return df
+            
+            def _generate_mock_fraud_data_dashboard(n_samples=5000):
+                """Generate mock fraud data for dashboard when file is not available (module-level fallback)"""
+                np.random.seed(42)
+                n_features = 29
+                data = np.random.randn(n_samples, n_features)
+                cols = ['Time'] + [f'V{i}' for i in range(1, 29)] + ['Amount']
+                df = pd.DataFrame(data, columns=cols[:-1])  # All except Class
+                df['Amount'] = np.abs(np.random.lognormal(mean=3, sigma=1.5, size=n_samples))
+                fraud_rate = 0.0017
+                n_fraud = int(n_samples * fraud_rate)
+                df['Class'] = 0
+                fraud_indices = np.random.choice(n_samples, size=n_fraud, replace=False)
+                df.loc[fraud_indices, 'Class'] = 1
+                if n_fraud > 0:
+                    df.loc[fraud_indices, 'V14'] = df.loc[fraud_indices, 'V14'] - 2
+                    df.loc[fraud_indices, 'V12'] = df.loc[fraud_indices, 'V12'] - 2
+                    df.loc[fraud_indices, 'V10'] = df.loc[fraud_indices, 'V10'] - 1.5
+                df['Time'] = np.sort(np.random.uniform(0, 48*3600, n_samples))
+                return df
+            
+            try:
+                from src.utils.eda_helpers import calculate_summary_stats, detect_outliers
+            except ImportError:
                 def calculate_summary_stats(df):
                     numeric_cols = df.select_dtypes(include=[np.number]).columns
                     summary = {
@@ -537,14 +582,16 @@ elif page == "📈 Data Explorer":
                         outlier_count = outliers_df['is_outlier'].sum()
                         st.info(f"Found {outlier_count} outliers in {selected_col}")
             else:
-                error_msg = "Could not load fraud detection data."
+                # This should not happen if load_sample_data returns mock data, but just in case
                 if df is None:
-                    error_msg += " File not found. Please ensure data/creditcard.csv exists."
+                    st.info("💡 **Using generated sample data** - Original file not available (file >25MB, not in Git). This is normal in deployed environments.")
+                    df = _generate_mock_fraud_data_dashboard(5000)
                 elif df.empty:
-                    error_msg += " File is empty."
+                    st.error("File is empty.")
                 elif 'Class' not in df.columns:
-                    error_msg += f" 'Class' column not found. Columns: {list(df.columns)[:10]}..."
-                st.error(error_msg)
+                    st.error(f"'Class' column not found. Columns: {list(df.columns)[:10]}...")
+                else:
+                    st.error("Could not load fraud detection data.")
         except Exception as e:
             import traceback
             st.error(f"Error loading data: {e}")

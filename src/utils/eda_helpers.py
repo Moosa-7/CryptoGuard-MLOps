@@ -41,7 +41,9 @@ def load_sample_data(dataset_name: str, sample_size: int = 5000) -> Optional[pd.
                     df = df.sample(n=sample_size, random_state=42)
                 return df
             else:
-                return None
+                # File not found - generate mock data for deployment
+                print(f"⚠️ {filepath} not found, generating mock fraud data for EDA...")
+                return _generate_mock_fraud_data(sample_size)
         elif dataset_name.lower() in ['btc', 'bitcoin']:
             # Try multiple possible paths
             possible_paths = [

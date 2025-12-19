@@ -164,12 +164,21 @@ class ModelLoader:
                 # Calculate reference statistics for drift detection (we'll do this lazily if needed)
                 self.fraud_reference_stats = None  # Will be calculated on demand
             else:
-                checked_paths = [
-                    os.path.join(os.getcwd(), "data/creditcard.csv"),
-                    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data/creditcard.csv"),
-                    "data/creditcard.csv"
-                ]
-                print(f"   ⚠️ Fraud training data not found. Checked paths: {checked_paths}")
+                # File not found - generate mock data for deployment (file too large for Git)
+                print("   ⚠️ Fraud training data file not found (file >25MB, not in Git)")
+                print("   💡 Generating mock fraud data for drift detection/explanations...")
+                self.fraud_training_sample = self._generate_mock_fraud_data(1000)
+                if self.fraud_pca is not None:
+                    # Apply PCA if available
+                    X_fraud_pca = self.fraud_pca.transform(self.fraud_training_sample)
+                    self.fraud_training_sample = pd.DataFrame(
+                        X_fraud_pca, 
+                        columns=[f'PC{i+1}' for i in range(X_fraud_pca.shape[1])]
+                    )
+                    print("   ✅ Mock fraud training sample generated (PCA transformed)")
+                else:
+                    print("   ✅ Mock fraud training sample generated (raw features)")
+                self.fraud_reference_stats = None
         except Exception as e:
             print(f"   ⚠️ Error loading training samples: {e}")
         
@@ -198,3 +207,30 @@ class ModelLoader:
             except Exception as e:
                 print(f"Error calculating reference statistics: {e}")
         return self.fraud_reference_stats
+    
+    def _generate_mock_fraud_data(self, n_samples: int = 1000):
+        """
+        Generate mock fraud detection data when the real file is not available.
+        This ensures the app works in deployed environments where large files can't be pushed to Git.
+        """
+        np.random.seed(42)
+        
+        # Generate realistic fraud detection features (V1-V28 are PCA transformed, so normal distribution)
+        n_features = 29  # V1-V28 + Amount
+        data = np.random.randn(n_samples, n_features)
+        
+        # Create column names (excluding Time and Class for feature matrix)
+        feature_cols = [f'V{i}' for i in range(1, 29)] + ['Amount']
+        df = pd.DataFrame(data, columns=feature_cols)
+        
+        # Generate realistic Amount values (positive, right-skewed)
+        df['Amount'] = np.abs(np.random.lognormal(mean=3, sigma=1.5, size=n_samples))
+        
+        # Make some rows have fraud-like characteristics (lower V14, V12, V10)
+        # This simulates the real data structure
+        fraud_like_indices = np.random.choice(n_samples, size=int(n_samples * 0.1), replace=False)
+        df.loc[fraud_like_indices, 'V14'] = df.loc[fraud_like_indices, 'V14'] - 1.5
+        df.loc[fraud_like_indices, 'V12'] = df.loc[fraud_like_indices, 'V12'] - 1.5
+        df.loc[fraud_like_indices, 'V10'] = df.loc[fraud_like_indices, 'V10'] - 1.0
+        
+        return df
