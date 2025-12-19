@@ -19,9 +19,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the entire project code
 COPY . .
 
-# Copy and set permissions for the startup script
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
+# Copy and set permissions for the startup scripts
+COPY entrypoint.sh start.sh ./
+RUN chmod +x entrypoint.sh start.sh
 
 # Run the startup script when the container launches
-CMD ["./entrypoint.sh"]
+# For Railway, use start.sh; for Docker directly, use entrypoint.sh
+CMD ["sh", "start.sh"]
