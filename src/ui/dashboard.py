@@ -104,7 +104,7 @@ if page == "💰 Bitcoin Forecaster":
         }
         
         try:
-            response = requests.post(f"{API_URL}/predict/btc", json=payload)
+            response = requests.post(f"{API_URL}/predict/btc", json=payload, timeout=5)
             if response.status_code == 200:
                 res_json = response.json()
                 c1, c2, c3 = st.columns(3)
@@ -125,8 +125,12 @@ if page == "💰 Bitcoin Forecaster":
                 st.session_state['btc_prediction'] = res_json
             else:
                 st.error("⚠️ Model Server Error")
+        except requests.exceptions.ConnectionError:
+            st.warning("⚠️ **API Backend Not Connected** - Forecast generation requires the FastAPI service to be running.")
+        except requests.exceptions.Timeout:
+            st.warning("⏱️ API request timed out. Please try again.")
         except Exception as e:
-            st.error(f"API Error: {e}")
+            st.warning(f"Service temporarily unavailable: {str(e)[:80]}...")
     
     # Show explanation button if prediction exists
     if 'btc_payload' in st.session_state and st.button("🔍 Explain Forecast"):
@@ -134,7 +138,7 @@ if page == "💰 Bitcoin Forecaster":
         with st.spinner("Generating explanations..."):
             try:
                 # Get SHAP explanation
-                explain_response = requests.post(f"{API_URL}/explain/btc", json=payload)
+                explain_response = requests.post(f"{API_URL}/explain/btc", json=payload, timeout=5)
                 if explain_response.status_code == 200:
                     exp_data = explain_response.json()
                     
@@ -162,7 +166,7 @@ if page == "💰 Bitcoin Forecaster":
     # Add feature importance visualization (always available - prominently displayed)
     st.subheader("📊 Model Feature Importance")
     try:
-        feat_response = requests.get(f"{API_URL}/features/importance/btc_price")
+        feat_response = requests.get(f"{API_URL}/features/importance/btc_price", timeout=2)
         if feat_response.status_code == 200:
             feat_data = feat_response.json()
             df_feat = pd.DataFrame({
@@ -184,8 +188,13 @@ if page == "💰 Bitcoin Forecaster":
                 st.caption("Higher importance scores indicate features that contribute more to price predictions.")
         else:
             st.info("Feature importance not available. The model may need to be retrained.")
+    except requests.exceptions.ConnectionError:
+        st.info("💡 **Feature importance unavailable** - API backend not connected. This feature requires the FastAPI service to be running.")
+    except requests.exceptions.Timeout:
+        st.info("⏱️ Feature importance request timed out. The API may be starting up.")
     except Exception as e:
-        st.warning(f"Could not load feature importance: {e}")
+        # Hide technical error details from users
+        st.info("Feature importance not available at this time.")
 
 # ==========================================
 # PAGE 2: MARKET CORRELATION
@@ -288,7 +297,7 @@ elif page == "👥 Customer Segmentation":
         
         # AUTOMATIC PREDICTION (Inside Try Block)
         try:
-            response = requests.post(f"{API_URL}/predict/segment", json={"pc1": spending, "pc2": frequency})
+            response = requests.post(f"{API_URL}/predict/segment", json={"pc1": spending, "pc2": frequency}, timeout=3)
             
             # ✅ CHECK INSIDE THE BLOCK
             if response.status_code == 200:
@@ -302,11 +311,17 @@ elif page == "👥 Customer Segmentation":
                     box_color = "info"
             else:
                 st.warning("⚠️ API is starting up...")
+                cluster_name = "Unknown (API unavailable)"
                 
+        except requests.exceptions.ConnectionError:
+            st.warning("⚠️ **API Backend Not Connected** - Customer segmentation requires the FastAPI service.")
+            cluster_name = "Unknown (API unavailable)"
+        except requests.exceptions.Timeout:
+            st.warning("⚠️ API request timed out. Please try again.")
+            cluster_name = "Unknown (API timeout)"
         except Exception as e:
-            st.error(f"⚠️ Connection Error: {e}")
-            # Stop execution here if API is down
-            st.stop()
+            st.warning(f"⚠️ Service temporarily unavailable. Error: {str(e)[:50]}...")
+            cluster_name = "Unknown (Service error)"
 
         # EDUCATIONAL PANEL
         with st.expander("📚 Interpretation Guide"):
@@ -740,7 +755,7 @@ elif page == "⚠️ Data Drift Monitor":
     with col2:
         if st.button("Check for Drift"):
             try:
-                response = requests.post(f"{API_URL}/monitor/drift", json={"features": final_features})
+                response = requests.post(f"{API_URL}/monitor/drift", json={"features": final_features}, timeout=5)
                 if response.status_code == 200:
                     drift_data = response.json()
                     
